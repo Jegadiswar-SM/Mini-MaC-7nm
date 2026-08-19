@@ -1,0 +1,10 @@
+rtl/core/ibex/vendor/lowrisc_ip/ip/prim/rtl/prim_assert.sv
+/home/24bvd1009/bolter/Mini-MaC-7nm/rtl/core/ibex/vendor/lowrisc_ip/ip/prim/rtl/prim_assert.sv
+rtl/core/ibex/vendor/lowrisc_ip/ip/prim/rtl/prim_assert_standard_macros.svh
+/home/24bvd1009/bolter/Mini-MaC-7nm/rtl/core/ibex/vendor/lowrisc_ip/ip/prim/rtl/prim_assert_standard_macros.svh
+rtl/core/ibex/vendor/lowrisc_ip/ip/prim/rtl/prim_assert_sec_cm.svh
+/home/24bvd1009/bolter/Mini-MaC-7nm/rtl/core/ibex/vendor/lowrisc_ip/ip/prim/rtl/prim_assert_sec_cm.svh
+rtl/core/ibex/vendor/lowrisc_ip/ip/prim/rtl/prim_flop_macros.sv
+/home/24bvd1009/bolter/Mini-MaC-7nm/rtl/core/ibex/vendor/lowrisc_ip/ip/prim/rtl/prim_flop_macros.sv
+rtl/inc/dv_fcov_macros.svh
+/home/24bvd1009/bolter/Mini-MaC-7nm/rtl/inc/dv_fcov_macros.svh

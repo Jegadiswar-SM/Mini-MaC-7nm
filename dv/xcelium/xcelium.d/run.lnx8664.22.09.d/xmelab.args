@@ -1,0 +1,28 @@
+//
+// File created by:  xrun
+// Do not modify this file
+//
++incdir+rtl/inc
++incdir+rtl/core/ibex/vendor/lowrisc_ip/ip/prim/rtl
+-amsdlibdir
+dv/xcelium/xcelium.d/AMSD
+-timescale
+1ns/1ps
+-ACCESS
++rwc
+-XMLIBDIRNAME
+dv/xcelium/xcelium.d
+-no_analogsolver
+-MESSAGES
+soc_top_tb
+-XLMODE
+dv/xcelium/xcelium.d/run.lnx8664.22.09.d
+-RUNMODE
+-CDSLIB
+dv/xcelium/xcelium.d/run.lnx8664.22.09.d/cds.lib
+-HDLVAR
+dv/xcelium/xcelium.d/run.lnx8664.22.09.d/hdl.var
+-WORK
+worklib
+-IRUNHASTOP
+-HASXLMODE

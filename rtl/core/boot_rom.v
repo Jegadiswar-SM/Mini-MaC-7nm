@@ -14,9 +14,21 @@ module boot_rom (
             rom[_i] = 32'h0;
     end
 `else
-    // During simulation, we load the firmware here
+    // During simulation, run.sh supplies +firmware=<project-relative path>.
+    // The parameter keeps standalone simulations deterministic as well.
+    parameter FIRMWARE_FILE = "dv/xcelium/firmware.hex";
+    reg [8*1024-1:0] firmware_file;
+    integer firmware_fd;
     initial begin
-        $readmemh("firmware.hex", rom);
+        firmware_file = FIRMWARE_FILE;
+        if ($value$plusargs("firmware=%s", firmware_file)) begin end
+        firmware_fd = $fopen(firmware_file, "r");
+        if (firmware_fd == 0) begin
+            $error("boot_rom: firmware image '%0s' is missing; pass +firmware=<path>", firmware_file);
+            $fatal(1, "boot_rom cannot initialize instruction memory");
+        end
+        $fclose(firmware_fd);
+        $readmemh(firmware_file, rom);
     end
 `endif
 

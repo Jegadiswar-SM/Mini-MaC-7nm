@@ -1,0 +1,9 @@
+./prim_assert.sv
+rtl/inc/prim_assert.sv
+./prim_assert_standard_macros.svh
+rtl/inc/prim_assert_standard_macros.svh
+./prim_assert_sec_cm.svh
+rtl/inc/prim_assert_sec_cm.svh
+./prim_flop_macros.sv
+rtl/inc/prim_flop_macros.sv
+./dv_fcov_macros.svh

@@ -1,0 +1,1 @@
+s1(19Aug2026:16:36:20):  xrun -64bit -sv -timescale 1ns/1ps -f dv/xcelium/filelist.f -top soc_top_tb -access +rwc -xmlibdirname dv/xcelium/xcelium.d -l dv/xcelium/xrun.log -elaborate 

@@ -1,0 +1,25 @@
+//
+// File created by:  xrun
+// Do not modify this file
+//
++incdir+rtl/inc
++incdir+rtl/core/ibex/vendor/lowrisc_ip/ip/prim/rtl
+-amsdlibdir
+dv/xcelium/xcelium.d/AMSD
+-MESSAGES
++EMGRLOG
+dv/xcelium/xrun.log
+-XLSTIME
+1787137580
+-XLKEEP
+-XLMODE
+dv/xcelium/xcelium.d/run.lnx8664.22.09.d
+-RUNMODE
+-CDSLIB
+dv/xcelium/xcelium.d/run.lnx8664.22.09.d/cds.lib
+-HDLVAR
+dv/xcelium/xcelium.d/run.lnx8664.22.09.d/hdl.var
+-XLNAME
+xrun
+-XLVERSION
+"TOOL:	xrun(64)	22.09-s003"

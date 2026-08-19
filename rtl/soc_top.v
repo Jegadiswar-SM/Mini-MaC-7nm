@@ -16,8 +16,14 @@ module soc_top (
     wire [3:0]  cpu_be;
     wire [31:0] cpu_addr, cpu_wdata, cpu_rdata;
 
-    wire dma_m_req, dma_m_gnt, dma_m_rvalid, dma_m_we;
+    // The memory subsystem exposes one DMA request port.  The programmed-copy
+    // DMA and the MAC streaming DMA are independent masters of that port.
+    wire        dma_m_req, dma_m_gnt, dma_m_rvalid, dma_m_we;
     wire [31:0] dma_m_addr, dma_m_wdata, dma_m_rdata;
+    wire        stream_dma_req, stream_dma_gnt, stream_dma_rvalid, stream_dma_we;
+    wire [31:0] stream_dma_addr, stream_dma_wdata;
+    wire        copy_dma_req, copy_dma_gnt, copy_dma_rvalid, copy_dma_we;
+    wire [31:0] copy_dma_addr, copy_dma_wdata;
 
     wire [31:0] apb_paddr, apb_pwdata, apb_bus_data, cpu_rdata_apb;
     wire        apb_psel, apb_penable, apb_pwrite, apb_pready, cpu_gnt_apb, cpu_rvalid_apb;
@@ -35,8 +41,31 @@ module soc_top (
     end
     assign rst_n_int = rst_sync[1];
 
-    wire sel_periph = (cpu_addr[31:20] == 12'h400);
-    wire sel_mem    = !sel_periph;
+    // Qualify the address decode with a valid request.  Ibex requires its
+    // grant input to be known even while its request address is don't-care.
+    wire cpu_is_periph = cpu_req && (cpu_addr[31:20] == 12'h400);
+    wire cpu_is_mem    = cpu_req && !cpu_is_periph;
+    reg  cpu_response_from_periph;
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n)
+            cpu_response_from_periph <= 1'b0;
+        else if (cpu_req && cpu_gnt)
+            cpu_response_from_periph <= cpu_is_periph;
+    end
+
+    dma_arbiter u_dma_arbiter (
+        .clk(clk), .rst_n(rst_n_int),
+        .stream_req_i(stream_dma_req), .stream_addr_i(stream_dma_addr),
+        .stream_we_i(stream_dma_we), .stream_wdata_i(stream_dma_wdata),
+        .stream_gnt_o(stream_dma_gnt), .stream_rvalid_o(stream_dma_rvalid),
+        .copy_req_i(copy_dma_req), .copy_addr_i(copy_dma_addr),
+        .copy_we_i(copy_dma_we), .copy_wdata_i(copy_dma_wdata),
+        .copy_gnt_o(copy_dma_gnt), .copy_rvalid_o(copy_dma_rvalid),
+        .mem_req_o(dma_m_req), .mem_addr_o(dma_m_addr), .mem_we_o(dma_m_we),
+        .mem_wdata_o(dma_m_wdata), .mem_gnt_i(dma_m_gnt),
+        .mem_rvalid_i(dma_m_rvalid)
+    );
 
     ibex_top #(.RV32M(ibex_pkg::RV32MFast), .RV32B(ibex_pkg::RV32BNone), .SecureIbex(1'b0)) u_core (
         .clk_i(clk), .rst_ni(rst_n_int), .test_en_i(1'b0), .hart_id_i(32'h0), .boot_addr_i(32'h0),
@@ -49,7 +78,7 @@ module soc_top (
         .fetch_enable_i(4'hA), .debug_req_i(1'b0), .scan_rst_ni(1'b1), .irq_nm_i(1'b0),
         .irq_software_i(1'b0), .irq_timer_i(1'b0), .irq_external_i(1'b0), .irq_fast_i(15'h0),
         .scramble_key_valid_i(1'b0), .scramble_key_i(128'h0), .scramble_nonce_i(64'h0), .scramble_req_o(),
-        .ram_cfg_icache_tag_i(10'h0), .ram_cfg_icache_data_i(10'h0), .ram_cfg_rsp_icache_tag_o(), .ram_cfg_rsp_icache_data_o(),
+        .ram_cfg_icache_tag_i(12'h000), .ram_cfg_icache_data_i(12'h000), .ram_cfg_rsp_icache_tag_o(), .ram_cfg_rsp_icache_data_o(),
         .alert_minor_o(), .alert_major_internal_o(), .alert_major_bus_o(), .core_sleep_o(),
         .crash_dump_o(), .double_fault_seen_o(), .lockstep_cmp_en_o(), .data_req_shadow_o(),
         .data_we_shadow_o(), .data_be_shadow_o(), .data_addr_shadow_o(), .data_wdata_shadow_o(),
@@ -120,12 +149,12 @@ module soc_top (
         .wgt_done_o(),
         .act_done_o(),
         .res_done_o(),
-        .m_req_o(dma_m_req),
-        .m_gnt_i(dma_m_gnt),
-        .m_addr_o(dma_m_addr),
-        .m_we_o(dma_m_we),
-        .m_wdata_o(dma_m_wdata),
-        .m_rvalid_i(dma_m_rvalid),
+        .m_req_o(stream_dma_req),
+        .m_gnt_i(stream_dma_gnt),
+        .m_addr_o(stream_dma_addr),
+        .m_we_o(stream_dma_we),
+        .m_wdata_o(stream_dma_wdata),
+        .m_rvalid_i(stream_dma_rvalid),
         .m_rdata_i(dma_m_rdata),
         .m_axis_wgt_tdata(axis_wgt_tdata),
         .m_axis_wgt_tvalid(axis_wgt_tvalid),
@@ -139,11 +168,13 @@ module soc_top (
         .s_axis_res_tlast(axis_res_tlast)
     );
 
-    mem_subsystem #(.NUM_MAC_MASTERS(0)) u_mem (
+    // mem_subsystem arbitrates four MAC request slots internally. Keep all four
+    // ports present when the accelerator is disconnected, and tie them inactive.
+    mem_subsystem #(.NUM_MAC_MASTERS(4)) u_mem (
         .clk(clk), .rst_n(rst_n_int),
         .instr_req(instr_req), .instr_addr(instr_addr), .instr_rdata(instr_rdata),
         .instr_rvalid(instr_rvalid), .instr_gnt(instr_gnt),
-        .cpu_req(cpu_req && sel_mem), .cpu_addr(cpu_addr), .cpu_we(cpu_we),
+        .cpu_req(cpu_is_mem), .cpu_addr(cpu_addr), .cpu_we(cpu_we),
         .cpu_be(cpu_be), .cpu_wdata(cpu_wdata),
         .cpu_rdata(cpu_rdata_mem), .cpu_rvalid(cpu_rvalid_mem),
         .dma_req(dma_m_req && dma_m_addr[31:28] < 4'hC), .dma_addr(dma_m_addr), .dma_we(dma_m_we),
@@ -156,7 +187,7 @@ module soc_top (
 
     obi_to_apb u_bridge (
         .clk(clk), .rst_n(rst_n_int),
-        .obi_req(cpu_req && sel_periph), .obi_gnt(cpu_gnt_apb), .obi_addr(cpu_addr),
+        .obi_req(cpu_is_periph), .obi_gnt(cpu_gnt_apb), .obi_addr(cpu_addr),
         .obi_we(cpu_we), .obi_wdata(cpu_wdata),
         .obi_rvalid(cpu_rvalid_apb), .obi_rdata(cpu_rdata_apb),
         .paddr(apb_paddr), .psel(apb_psel), .penable(apb_penable),
@@ -195,8 +226,8 @@ module soc_top (
         .clk(clk), .rst_n(rst_n_int),
         .src_addr_i(d_src), .dst_addr_i(d_dst), .length_i(d_len),
         .start_i(d_start), .busy_o(dma_busy), .done_o(dma_done), .err_o(dma_err),
-        .req_o(dma_m_req), .gnt_i(dma_m_gnt), .addr_o(dma_m_addr), .we_o(dma_m_we),
-        .wdata_o(dma_m_wdata), .rvalid_i(dma_m_rvalid), .rdata_i(dma_m_rdata)
+        .req_o(copy_dma_req), .gnt_i(copy_dma_gnt), .addr_o(copy_dma_addr), .we_o(copy_dma_we),
+        .wdata_o(copy_dma_wdata), .rvalid_i(copy_dma_rvalid), .rdata_i(dma_m_rdata)
     );
 
     mac_multicore #(
@@ -239,9 +270,9 @@ module soc_top (
         .prdata(), .pready()
     );
 
-    assign cpu_gnt    = sel_periph ? cpu_gnt_apb    : 1'b1;
-    assign cpu_rvalid = sel_periph ? cpu_rvalid_apb : cpu_rvalid_mem;
-    assign cpu_rdata  = sel_periph ? cpu_rdata_apb  : cpu_rdata_mem;
+    assign cpu_gnt    = cpu_req ? (cpu_is_periph ? cpu_gnt_apb : 1'b1) : 1'b0;
+    assign cpu_rvalid = cpu_response_from_periph ? cpu_rvalid_apb : cpu_rvalid_mem;
+    assign cpu_rdata  = cpu_response_from_periph ? cpu_rdata_apb  : cpu_rdata_mem;
 
     assign mac_global_start = u_mac.global_start;
     assign mac_gnt_vec      = 4'b0;

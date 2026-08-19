@@ -1,0 +1,193 @@
+xrun(64): 22.09-s003: (c) Copyright 1995-2022 Cadence Design Systems, Inc.
+TOOL:	xrun(64)	22.09-s003: Started on Aug 19, 2026 at 15:42:43 IST
+xrun
+	-64bit
+	-sv
+	-timescale 1ns/1ps
+	+incdir+rtl/inc
+	+incdir+rtl/core/ibex/vendor/lowrisc_ip/ip/prim/rtl
+	rtl/core/ibex/vendor/lowrisc_ip/ip/prim_generic/rtl/prim_ram_1p_pkg.sv
+	rtl/core/ibex/vendor/lowrisc_ip/ip/prim/rtl/prim_secded_pkg.sv
+	rtl/core/ibex/rtl/ibex_pkg.sv
+	rtl/core/ibex/vendor/lowrisc_ip/ip/prim_generic/rtl/prim_clock_gating.sv
+	rtl/core/ibex/vendor/lowrisc_ip/ip/prim_generic/rtl/prim_buf.sv
+	rtl/core/ibex/rtl/ibex_pmp.sv
+	rtl/core/ibex/rtl/ibex_alu.sv
+	rtl/core/ibex/rtl/ibex_branch_predict.sv
+	rtl/core/ibex/rtl/ibex_compressed_decoder.sv
+	rtl/core/ibex/rtl/ibex_csr.sv
+	rtl/core/ibex/rtl/ibex_counter.sv
+	rtl/core/ibex/rtl/ibex_cs_registers.sv
+	rtl/core/ibex/rtl/ibex_decoder.sv
+	rtl/core/ibex/rtl/ibex_dummy_instr.sv
+	rtl/core/ibex/rtl/ibex_ex_block.sv
+	rtl/core/ibex/rtl/ibex_fetch_fifo.sv
+	rtl/core/ibex/rtl/ibex_id_stage.sv
+	rtl/core/ibex/rtl/ibex_if_stage.sv
+	rtl/core/ibex/rtl/ibex_load_store_unit.sv
+	rtl/core/ibex/rtl/ibex_multdiv_slow.sv
+	rtl/core/ibex/rtl/ibex_multdiv_fast.sv
+	rtl/core/ibex/rtl/ibex_prefetch_buffer.sv
+	rtl/core/ibex/rtl/ibex_register_file_ff.sv
+	rtl/core/ibex/rtl/ibex_wb_stage.sv
+	rtl/core/ibex/rtl/ibex_controller.sv
+	rtl/core/ibex/rtl/ibex_core.sv
+	rtl/core/ibex/rtl/ibex_top.sv
+	rtl/macros/sram_wrapper.v
+	rtl/bus/apb_bus.v
+	rtl/bus/obi_to_apb.v
+	rtl/accel/pe.v
+	rtl/accel/systolic_array.v
+	rtl/accel/mac_cfg_regs.v
+	rtl/accel/axi_stream_dma.v
+	rtl/accel/mac_core_axi.v
+	rtl/accel/mac_multicore.v
+	rtl/core/boot_rom.v
+	rtl/core/dma_regs.v
+	rtl/core/dma_master.v
+	rtl/core/mem_subsystem.v
+	rtl/core/telemetry.v
+	rtl/soc_top.v
+	dv/xcelium/soc_top_tb.sv
+	-top soc_top_tb
+	-access +rwc
+	-elaborate
+Recompiling... reason: file './rtl/soc_top.v' is newer than expected.
+	expected: Wed Aug 19 14:18:50 2026
+	actual:   Wed Aug 19 15:42:28 2026
+file: rtl/soc_top.v
+	module worklib.soc_top:v
+		errors: 0, warnings: 0
+	Elaborating the design hierarchy:
+		Caching library 'worklib' ....... Done
+	Top level design units:
+		ibex_pkg
+		prim_ram_1p_pkg
+		prim_secded_pkg
+		soc_top_tb
+xmelab: *W,DSEMEL: This SystemVerilog design will be simulated as per IEEE 1800-2009 SystemVerilog simulation semantics. Use -disable_sem2009 option for turning off SV 2009 simulation semantics.
+	Building instance overlay tables: 
+            pending_dside_accesses_shifted[i] = pending_dside_accesses_q[i + 1];
+                                                                       |
+xmelab: *W,BNDASW (./rtl/core/ibex/rtl/ibex_top.sv,1208|71): Bit-select or part-select index out of declared bounds in the sensitivity list of always block.
+.................... Done
+	Generating native compiled code:
+		worklib.telemetry:v <0x31d7ce6d>
+			streams:  12, words:  4610
+		worklib.pe:v <0x4dbf3558>
+			streams:   5, words:  1980
+		worklib.sram_wrapper:v <0x7dbcb010>
+			streams:   6, words:  4087
+		worklib.mac_cfg_regs:v <0x7579f891>
+			streams:  14, words:  6923
+		worklib.dma_master:v <0x4faee64b>
+			streams:  12, words:  6011
+		worklib.dma_regs:v <0x1b8681d5>
+			streams:  10, words:  3935
+		worklib.apb_bus:v <0x2050f548>
+			streams:   2, words:  4128
+		worklib.obi_to_apb:v <0x69606107>
+			streams:   9, words:  3498
+		worklib.sram_wrapper:v <0x79f09702>
+			streams:   6, words:  3946
+		worklib.boot_rom:v <0x5034b17b>
+			streams:   3, words:   715
+		worklib.axi_stream_dma:v <0x44f7ecb7>
+			streams:  18, words: 10633
+		worklib.sram_wrapper:v <0x15bfc5a8>
+			streams:   6, words:  3946
+		worklib.ibex_csr:sv <0x3b230eb2>
+			streams:   9, words:  5241
+		worklib.ibex_counter:sv <0x69cea48b>
+			streams:   6, words:  3970
+		worklib.ibex_counter:sv <0x58239ac5>
+			streams:   6, words:  3804
+		worklib.ibex_csr:sv <0x76c89d70>
+			streams:   9, words:  5180
+		worklib.ibex_csr:sv <0x3c9dc454>
+			streams:   9, words:  5161
+		worklib.ibex_csr:sv <0x078f0904>
+			streams:   9, words:  5236
+		worklib.ibex_csr:sv <0x13e58d51>
+			streams:   9, words:  5164
+		worklib.ibex_csr:sv <0x2e412e4d>
+			streams:   9, words:  5182
+		worklib.ibex_csr:sv <0x2d1c04a0>
+			streams:   9, words:  5152
+		worklib.ibex_csr:sv <0x4c818837>
+			streams:   9, words:  5248
+		worklib.ibex_wb_stage:sv <0x20ddcbd8>
+			streams:  28, words:  9807
+		worklib.ibex_controller:sv <0x21279fad>
+			streams:  81, words: 76478
+		worklib.ibex_decoder:sv <0x50d60e38>
+			streams:  24, words: 59504
+		worklib.ibex_compressed_decoder:sv <0x4bde51b2>
+			streams:  62, words: 79268
+		worklib.ibex_if_stage:sv <0x10f507d0>
+			streams: 125, words: 57433
+		worklib.prim_buf:sv <0x44b95d50>
+			streams:   2, words:   407
+		worklib.prim_clock_gating:sv <0x021762b2>
+			streams:   2, words:   577
+		worklib.soc_top:v <0x68903209>
+			streams:  17, words:  9109
+		worklib.soc_top_tb:sv <0x427a9054>
+			streams:   5, words:  4413
+		worklib.ibex_alu:sv <0x64ad4253>
+			streams:  47, words: 33751
+		worklib.ibex_top:sv <0x15c298ff>
+			streams: 309, words: 230059
+		worklib.prim_secded_pkg:sv <0x22a30fef>
+			streams:  41, words: 208631
+		worklib.mem_subsystem:v <0x08f6bd3f>
+			streams:  26, words: 22726
+		worklib.systolic_array:v <0x1c5ff567>
+			streams:   4, words:   836
+		worklib.mac_core_axi:v <0x31043003>
+			streams:  28, words: 11218
+		worklib.ibex_fetch_fifo:sv <0x7ce84b24>
+			streams:  52, words: 31294
+		worklib.ibex_prefetch_buffer:sv <0x6a4fd22d>
+			streams:  40, words: 14242
+		worklib.ibex_register_file_ff:sv <0x0953fa9f>
+			streams:  10, words:  3443
+		worklib.mac_multicore:v <0x7079ca4c>
+			streams:   9, words:  3281
+		worklib.ibex_core:sv <0x6fa59aba>
+			streams: 392, words: 134925
+		worklib.ibex_cs_registers:sv <0x621d4d0a>
+			streams: 125, words: 98548
+		worklib.ibex_id_stage:sv <0x5844e41d>
+			streams: 305, words: 190480
+		worklib.ibex_load_store_unit:sv <0x34ce31a6>
+			streams:  78, words: 62944
+		worklib.ibex_ex_block:sv <0x7bfdfc06>
+			streams:  34, words: 15743
+		worklib.ibex_multdiv_fast:sv <0x6ce3b818>
+			streams:  61, words: 60772
+		worklib.ibex_pkg:sv <0x2c5b2783>
+			streams:   0, words:     0
+            pending_dside_accesses_shifted[i] = pending_dside_accesses_q[i + 1];
+                                                                       |
+xmelab: *W,BNDASW (./rtl/core/ibex/rtl/ibex_top.sv,1208|71): Bit-select or part-select index out of declared bounds in the sensitivity list of always block.
+	Building instance specific data structures.
+	Loading native compiled code:     .................... Done
+	Design hierarchy summary:
+		                   Instances  Unique
+		Modules:                4167      36
+		Verilog packages:          3       3
+		Resolved nets:             1       1
+		Registers:             22656    2280
+		Scalar wires:           1062       -
+		Expanded wires:            6       1
+		Vectored wires:        13650       -
+		Named events:            126     131
+		Always blocks:          4779     684
+		Initial blocks:          134     140
+		Cont. assignments:      5354     887
+		Pseudo assignments:      597     567
+		Assertions:              129     135
+		Simulation timescale:    1ps
+	Writing initial simulation snapshot: worklib.soc_top_tb:sv
+TOOL:	xrun(64)	22.09-s003: Exiting on Aug 19, 2026 at 15:42:45 IST  (total: 00:00:02)
