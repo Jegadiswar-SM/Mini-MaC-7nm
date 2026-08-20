@@ -9,6 +9,9 @@ log_file="dv/xcelium/xrun.log"
 
 rm -rf "$work_dir"
 
+echo "== Build deterministic CPU DMA firmware =="
+python3 dv/xcelium/build_firmware.py
+
 echo "== Xcelium compile/elaborate =="
 xrun -64bit -sv -timescale 1ns/1ps \
     -f dv/xcelium/filelist.f \

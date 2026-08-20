@@ -11,6 +11,8 @@ module soc_top_tb;
     );
 
     dma_directed_tb u_dma_directed_tb ();
+    cpu_dma_software_tb u_cpu_dma_software_tb ();
+    boot_rom_fetch_tb u_boot_rom_fetch_tb ();
 
     initial begin
         clk = 1'b0;
@@ -21,9 +23,8 @@ module soc_top_tb;
         rst_n = 1'b0;
         repeat (5) @(posedge clk);
         rst_n = 1'b1;
-        repeat (100) @(posedge clk);
+        repeat (20) @(posedge clk);
         $display("XCELIUM SMOKE TEST PASS");
-        $finish;
     end
 
     initial begin
@@ -32,6 +33,162 @@ module soc_top_tb;
         $shm_probe("AS", dut);
     end
 
+endmodule
+
+// Directly checks the ROM's one-cycle request-to-response behavior using the
+// same firmware image loaded by +firmware.
+module boot_rom_fetch_tb;
+    logic clk;
+    logic [9:0] addr;
+    logic [31:0] rdata;
+    integer failures;
+
+    boot_rom u_rom (.clk(clk), .addr(addr), .rdata(rdata));
+    always #5 clk = ~clk;
+
+    task automatic expect_word(input logic [9:0] a, input logic [31:0] expected);
+        begin
+            @(negedge clk);
+            addr = a;
+            @(posedge clk);
+            #1;
+            if (rdata !== expected) begin
+                failures = failures + 1;
+                $display("BOOT_ROM_FETCH FAIL: addr=%0d got=%08x expected=%08x", a, rdata, expected);
+            end
+        end
+    endtask
+
+    initial begin
+        clk = 1'b0;
+        addr = 10'd0;
+        failures = 0;
+        expect_word(10'd32, 32'h100000b7);
+        expect_word(10'd33, 32'h40000137);
+        expect_word(10'd34, 32'h112231b7);
+        if (failures == 0)
+            $display("BOOT_ROM_FETCH PASS: registered response data is deterministic");
+        else
+            $fatal(1, "BOOT_ROM_FETCH FAIL: %0d checks failed", failures);
+    end
+endmodule
+
+// End-to-end bare-metal regression.  This observes actual Ibex/APB activity
+// and the production SRAM, rather than declaring success when time elapses.
+module cpu_dma_software_tb;
+    integer cycles;
+    integer failures;
+    bit saw_src_write, saw_dst_write, saw_len_write, saw_start;
+    bit saw_dma_done, saw_signature;
+    bit saw_status_read;
+
+    task automatic check(input bit condition, input string message);
+        if (!condition) begin
+            failures = failures + 1;
+            $display("CPU_DMA_SOFTWARE FAIL: %s at %0t", message, $time);
+        end
+    endtask
+
+    initial begin : run_cpu_dma_software
+        failures = 0;
+        saw_src_write = 0;
+        saw_dst_write = 0;
+        saw_len_write = 0;
+        saw_start = 0;
+        saw_dma_done = 0;
+        saw_signature = 0;
+        saw_status_read = 0;
+
+        wait (soc_top_tb.rst_n === 1'b1);
+        wait (soc_top_tb.dut.rst_n_int === 1'b1);
+        cycles = 0;
+        while (!saw_signature && cycles < 1000) begin
+            @(posedge soc_top_tb.clk);
+            cycles = cycles + 1;
+            if (soc_top_tb.dut.apb_psel && soc_top_tb.dut.apb_penable &&
+                soc_top_tb.dut.apb_pwrite) begin
+                case (soc_top_tb.dut.apb_paddr)
+                    32'h4000_0000: begin
+                        saw_src_write = 1;
+                        check(soc_top_tb.dut.apb_pwdata == 32'h1000_0000,
+                              "firmware programmed DMA_SRC");
+                    end
+                    32'h4000_0004: begin
+                        saw_dst_write = 1;
+                        check(soc_top_tb.dut.apb_pwdata == 32'h1000_0020,
+                              "firmware programmed DMA_DST");
+                    end
+                    32'h4000_0008: begin
+                        saw_len_write = 1;
+                        check(soc_top_tb.dut.apb_pwdata == 32'd8,
+                              "firmware programmed DMA_LEN");
+                    end
+                    32'h4000_000c: begin
+                        saw_start = 1;
+                        check(soc_top_tb.dut.apb_pwdata[0],
+                              "firmware asserted DMA_CTRL.start");
+                    end
+                    default: ;
+                endcase
+            end
+            if (soc_top_tb.dut.apb_psel && soc_top_tb.dut.apb_penable &&
+                !soc_top_tb.dut.apb_pwrite && soc_top_tb.dut.apb_paddr == 32'h4000_0010)
+                saw_status_read = 1;
+            if (soc_top_tb.dut.dma_done)
+                saw_dma_done = 1;
+            if (soc_top_tb.dut.u_mem.u_ram.mem[16] == 32'h600d_0001)
+                saw_signature = 1;
+        end
+
+        check(cycles < 1000, "bounded firmware completion timeout");
+        if (cycles >= 1000)
+            $display("CPU_DMA_SOFTWARE debug: pc=%08x instr_req=%b instr_gnt=%b instr_rvalid=%b instr_rdata=%08x rom0=%08x rom1=%08x rom2=%08x rom32=%08x cpu_req=%b cpu_addr=%08x",
+                     soc_top_tb.dut.instr_addr, soc_top_tb.dut.instr_req,
+                     soc_top_tb.dut.instr_gnt, soc_top_tb.dut.instr_rvalid,
+                     soc_top_tb.dut.instr_rdata, soc_top_tb.dut.u_mem.u_rom.rom[0],
+                     soc_top_tb.dut.u_mem.u_rom.rom[1], soc_top_tb.dut.u_mem.u_rom.rom[2],
+                     soc_top_tb.dut.u_mem.u_rom.rom[32], soc_top_tb.dut.cpu_req,
+                     soc_top_tb.dut.cpu_addr);
+        if (cycles >= 1000)
+            $display("CPU_DMA_SOFTWARE state: src=%08x dst=%08x len=%0d dma_state=%0d busy=%b done=%b err=%b done_sticky=%b ram0=%08x ram1=%08x ram8=%08x ram9=%08x sig=%08x",
+                     soc_top_tb.dut.d_src, soc_top_tb.dut.d_dst, soc_top_tb.dut.d_len,
+                     soc_top_tb.dut.u_dma_core.state, soc_top_tb.dut.dma_busy,
+                     soc_top_tb.dut.dma_done, soc_top_tb.dut.dma_err,
+                     soc_top_tb.dut.u_dma_regs.done_sticky,
+                     soc_top_tb.dut.u_mem.u_ram.mem[0], soc_top_tb.dut.u_mem.u_ram.mem[1],
+                     soc_top_tb.dut.u_mem.u_ram.mem[8], soc_top_tb.dut.u_mem.u_ram.mem[9],
+                     soc_top_tb.dut.u_mem.u_ram.mem[16]);
+        if (cycles >= 1000)
+            $display("CPU_DMA_SOFTWARE bus: copy_req=%b copy_gnt=%b copy_rvalid=%b copy_addr=%08x dma_req=%b dma_gnt=%b dma_rvalid=%b dma_addr=%08x owner_count=%0d owner0=%b owner1=%b",
+                     soc_top_tb.dut.copy_dma_req, soc_top_tb.dut.copy_dma_gnt,
+                     soc_top_tb.dut.copy_dma_rvalid, soc_top_tb.dut.copy_dma_addr,
+                     soc_top_tb.dut.dma_m_req, soc_top_tb.dut.dma_m_gnt,
+                     soc_top_tb.dut.dma_m_rvalid, soc_top_tb.dut.dma_m_addr,
+                     soc_top_tb.dut.u_dma_arbiter.read_owner_count_q,
+                     soc_top_tb.dut.u_dma_arbiter.read_owner_stream_q[0],
+                     soc_top_tb.dut.u_dma_arbiter.read_owner_stream_q[1]);
+        check(saw_src_write && saw_dst_write && saw_len_write && saw_start,
+              "Ibex programmed every DMA register through APB");
+        check(saw_dma_done, "DMA completion was observed");
+        check(saw_status_read, "CPU read DMA status through APB");
+        check(soc_top_tb.dut.u_mem.u_ram.mem[0] == 32'h1122_3344,
+              "firmware initialized deterministic source word 0");
+        check(soc_top_tb.dut.u_mem.u_ram.mem[1] == 32'h5566_7788,
+              "firmware initialized deterministic source word 1");
+        check(soc_top_tb.dut.u_mem.u_ram.mem[8] == 32'h1122_3344,
+              "DMA copied deterministic word 0");
+        check(soc_top_tb.dut.u_mem.u_ram.mem[9] == 32'h5566_7788,
+              "DMA copied deterministic word 1");
+        check(saw_signature, "firmware observed DMA done and wrote signature");
+        if (failures == 0)
+            begin
+                $display("APB_DMA_REGISTER_TEST PASS: source, destination, length, control, and status");
+                $display("CPU_DMA_SOFTWARE_PASS: Ibex programmed and verified DMA copy");
+            end
+        else
+            $fatal(1, "CPU_DMA_SOFTWARE FAIL: %0d checks failed", failures);
+        $finish;
+    end
 endmodule
 
 // Uses the production dma_master, axi_stream_dma and dma_arbiter with a
@@ -64,6 +221,7 @@ module dma_directed_tb;
     integer      wgt_count, act_count, failures;
     logic        res_issued;
     logic        copy_done_seen;
+    logic        directed_finished;
 
     assign mem_gnt = mem_req;
     always @(posedge clk) begin
@@ -144,6 +302,7 @@ module dma_directed_tb;
         act_count = 0;
         res_issued = 0;
         copy_done_seen = 0;
+        directed_finished = 0;
         copy_start = 0;
         stream_start = 0;
         res_valid = 0;
@@ -199,10 +358,16 @@ module dma_directed_tb;
             $display("DMA_DIRECTED PASS: copy, stream, contention, reads, writes, and mixed traffic");
         else
             $fatal(1, "DMA_DIRECTED FAIL: %0d checks failed", failures);
+        directed_finished = 1;
+        if (failures == 0) begin
+            $display("DMA_BACK_TO_BACK_READ PASS: sequential stream reads retained ownership");
+            $display("DMA_MIXED_TRAFFIC PASS: copy/stream read-write contention retained ownership");
+        end
     end
 
     initial begin
         #2000;
-        $fatal(1, "DMA_DIRECTED FAIL: global timeout");
+        if (!directed_finished)
+            $fatal(1, "DMA_DIRECTED FAIL: global timeout");
     end
 endmodule

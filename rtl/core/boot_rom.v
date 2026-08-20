@@ -32,7 +32,9 @@ module boot_rom (
     end
 `endif
 
-    always @(posedge clk) begin
-        rdata <= rom[addr];
+    // The integration captures this value on the accepted request edge and
+    // presents it with the following-cycle response-valid indication.
+    always @(*) begin
+        rdata = rom[addr];
     end
 endmodule

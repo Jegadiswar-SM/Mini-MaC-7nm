@@ -26,6 +26,7 @@ module obi_to_apb (
         ST_SETUP = 2'd1,
         ST_ACCESS= 2'd2;
     reg [1:0] state;
+    reg [31:0] obi_rdata_q;
 
     // CPU always gets an immediate grant if we are idle
     assign obi_gnt = (state == ST_IDLE) && obi_req;
@@ -33,7 +34,7 @@ module obi_to_apb (
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             state <= ST_IDLE;
-            psel <= 0; penable <= 0; obi_rvalid <= 0;
+            psel <= 0; penable <= 0; obi_rvalid <= 0; obi_rdata_q <= 32'h0;
         end else begin
             case (state)
                 ST_IDLE: begin
@@ -52,6 +53,7 @@ module obi_to_apb (
                 end
                 ST_ACCESS: begin
                     if (pready) begin
+                        obi_rdata_q <= prdata;
                         psel <= 0;
                         penable <= 0;
                         obi_rvalid <= 1;
@@ -62,5 +64,5 @@ module obi_to_apb (
             endcase
         end
     end
-    assign obi_rdata = prdata;
+    assign obi_rdata = obi_rdata_q;
 endmodule

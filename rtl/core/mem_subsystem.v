@@ -47,13 +47,32 @@ module mem_subsystem #(
     logic sel_rom;
     logic sel_ram;
 
-    assign instr_gnt = instr_req;
+    // The prefetch buffer can queue requests, but this simple ROM port has a
+    // single response slot.  Accept one request, then return its captured
+    // address/data on the following cycle; never let a newer live address
+    // overwrite the response for the older request.
+    logic        instr_pending;
+    logic [31:0] instr_addr_q;
+    logic [31:0] instr_data_q;
+    wire  [31:0] rom_rdata;
+    assign instr_gnt = instr_req && !instr_pending;
 
     always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n)
+        if (!rst_n) begin
             instr_rvalid <= 1'b0;
-        else
-            instr_rvalid <= instr_req;
+            instr_pending <= 1'b0;
+            instr_addr_q <= 32'b0;
+            instr_data_q <= 32'b0;
+        end else begin
+            instr_rvalid <= instr_pending;
+            if (instr_gnt) begin
+                instr_pending <= 1'b1;
+                instr_addr_q <= instr_addr;
+                instr_data_q <= rom_rdata;
+            end else if (instr_pending) begin
+                instr_pending <= 1'b0;
+            end
+        end
     end
 
     logic [NUM_MAC_MASTERS-1:0] mac_gnt_int;
@@ -164,11 +183,15 @@ module mem_subsystem #(
 
     boot_rom u_rom (
         .clk(clk),
-        .addr(instr_req ? instr_addr[11:2] : arb_addr[11:2]),
-        .rdata(instr_rdata)
+        .addr(instr_pending ? instr_addr_q[11:2] :
+             (instr_req ? instr_addr[11:2] : arb_addr[11:2])),
+        .rdata(rom_rdata)
     );
 
+    assign instr_rdata = instr_data_q;
+
     logic [31:0] ram_dout;
+    logic        dma_read_pending;
     sram_wrapper #(.DEPTH(2048)) u_ram (
         .clk(clk),
         .sram_cen(!(sel_ram && arb_req)),
@@ -194,10 +217,15 @@ module mem_subsystem #(
         if (!rst_n) begin
             cpu_rvalid <= 0;
             dma_rvalid <= 0;
+            dma_read_pending <= 1'b0;
             mac_rvalid <= 0;
         end else begin
             cpu_rvalid <= cpu_req;
-            dma_rvalid <= dma_gnt;
+            dma_rvalid <= dma_read_pending;
+            if (dma_gnt && !dma_we)
+                dma_read_pending <= 1'b1;
+            else if (dma_read_pending)
+                dma_read_pending <= 1'b0;
             mac_rvalid <= mac_gnt;
         end
     end

@@ -75,7 +75,7 @@ module soc_top (
         .data_req_o(cpu_req), .data_gnt_i(cpu_gnt), .data_we_o(cpu_we), .data_be_o(cpu_be),
         .data_addr_o(cpu_addr), .data_wdata_o(cpu_wdata), .data_rdata_i(cpu_rdata), .data_rvalid_i(cpu_rvalid),
         .data_err_i(1'b0), .data_rdata_intg_i(7'h0), .data_wdata_intg_o(),
-        .fetch_enable_i(4'hA), .debug_req_i(1'b0), .scan_rst_ni(1'b1), .irq_nm_i(1'b0),
+        .fetch_enable_i(4'h1), .debug_req_i(1'b0), .scan_rst_ni(1'b1), .irq_nm_i(1'b0),
         .irq_software_i(1'b0), .irq_timer_i(1'b0), .irq_external_i(1'b0), .irq_fast_i(15'h0),
         .scramble_key_valid_i(1'b0), .scramble_key_i(128'h0), .scramble_nonce_i(64'h0), .scramble_req_o(),
         .ram_cfg_icache_tag_i(12'h000), .ram_cfg_icache_data_i(12'h000), .ram_cfg_rsp_icache_tag_o(), .ram_cfg_rsp_icache_data_o(),

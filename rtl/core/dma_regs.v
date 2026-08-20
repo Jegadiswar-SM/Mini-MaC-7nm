@@ -33,6 +33,7 @@ module dma_regs (
     localparam ADDR_CTRL    = 8'h0C;
     localparam ADDR_STAT    = 8'h10;
     localparam ADDR_IRQ_ACK = 8'h14;
+    reg done_sticky;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -42,10 +43,14 @@ module dma_regs (
             start_o    <= 1'b0;
             abort_o    <= 1'b0;
             irq_ack_o  <= 1'b0;
+            done_sticky <= 1'b0;
         end else begin
             start_o   <= 1'b0;
             abort_o   <= 1'b0;
             irq_ack_o <= 1'b0;
+
+            if (done_i)
+                done_sticky <= 1'b1;
             
             if (psel && penable && pwrite) begin
                 case (paddr[7:0])
@@ -55,8 +60,12 @@ module dma_regs (
                     ADDR_CTRL:    begin
                                     start_o <= pwdata[0];
                                     abort_o <= pwdata[1];
+                                    if (pwdata[0]) done_sticky <= 1'b0;
                                   end
-                    ADDR_IRQ_ACK: irq_ack_o  <= pwdata[0];
+                    ADDR_IRQ_ACK: begin
+                                    irq_ack_o  <= pwdata[0];
+                                    if (pwdata[0]) done_sticky <= 1'b0;
+                                  end
                     default:;
                 endcase
             end
@@ -68,7 +77,7 @@ module dma_regs (
             ADDR_SRC:  prdata = src_addr_o;
             ADDR_DST:  prdata = dst_addr_o;
             ADDR_LEN:  prdata = {16'h0, length_o};
-            ADDR_STAT: prdata = {29'h0, err_i, done_i, busy_i};
+            ADDR_STAT: prdata = {29'h0, err_i, done_sticky, busy_i};
             default:   prdata = 32'h0;
         endcase
     end
