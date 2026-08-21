@@ -12,6 +12,7 @@ module soc_top_tb;
 
     dma_directed_tb u_dma_directed_tb ();
     cpu_dma_software_tb u_cpu_dma_software_tb ();
+    cpu_mac_software_tb u_cpu_mac_software_tb ();
     boot_rom_fetch_tb u_boot_rom_fetch_tb ();
 
     initial begin
@@ -187,7 +188,55 @@ module cpu_dma_software_tb;
             end
         else
             $fatal(1, "CPU_DMA_SOFTWARE FAIL: %0d checks failed", failures);
-        $finish;
+    end
+endmodule
+
+module cpu_mac_software_tb;
+    integer cycles;
+    integer failures;
+    bit saw_start, saw_done, saw_bad;
+
+    task automatic check(input bit condition, input string message);
+        if (!condition) begin
+            failures = failures + 1;
+            $display("CPU_MAC_SOFTWARE FAIL: %s at %0t", message, $time);
+        end
+    endtask
+
+    initial begin
+        failures = 0; cycles = 0; saw_start = 0; saw_done = 0; saw_bad = 0;
+        wait (soc_top_tb.rst_n === 1'b1);
+        while (soc_top_tb.dut.u_mem.u_ram.mem[80] !== 32'h600d0002 && cycles < 4000) begin
+            @(posedge soc_top_tb.clk);
+            cycles = cycles + 1;
+            if (soc_top_tb.dut.apb_psel && soc_top_tb.dut.apb_penable && soc_top_tb.dut.apb_pwrite) begin
+                if (soc_top_tb.dut.apb_paddr == 32'h40011000 && soc_top_tb.dut.apb_pwdata[0]) saw_start = 1;
+            end
+            if (soc_top_tb.dut.mac_dma_res_done) saw_done = 1;
+            if (soc_top_tb.dut.u_mem.u_ram.mem[81] == 32'hbad00001) saw_bad = 1;
+        end
+        check(cycles < 4000, "bounded MAC software completion timeout");
+        check(saw_start, "CPU started MAC through APB CTRL");
+        check(saw_done, "result DMA completion was observed");
+        check(!saw_bad, "firmware did not report a MAC mismatch");
+        check(soc_top_tb.dut.u_mem.u_ram.mem[16] == 32'h600d0001,
+              "CPU DMA regression signature remains intact");
+        check(soc_top_tb.dut.u_mem.u_ram.mem[64] == 32'h00000005 &&
+              soc_top_tb.dut.u_mem.u_ram.mem[65] == 32'h0000000d &&
+              soc_top_tb.dut.u_mem.u_ram.mem[66] == 32'h0000000e &&
+              soc_top_tb.dut.u_mem.u_ram.mem[67] == 32'h0000000c,
+              "result DMA wrote the golden MAC stream");
+        check(soc_top_tb.dut.u_mem.u_ram.mem[80] == 32'h600d0002,
+              "CPU checked MAC result words and reported PASS");
+        check(soc_top_tb.dut.u_mem.u_ram.mem[16] == 32'h600d0001,
+              "CPU DMA signature exact value");
+        check(soc_top_tb.dut.u_mem.u_ram.mem[16] == 32'h600d0001,
+              "system SRAM remains deterministic after MAC traffic");
+        if (failures == 0) begin
+            $display("CPU_MAC_SOFTWARE PASS: APB start, stream DMA completion, and result [5,13,14,12]");
+            $finish;
+        end else
+            $fatal(1, "CPU_MAC_SOFTWARE FAIL: %0d checks failed", failures);
     end
 endmodule
 

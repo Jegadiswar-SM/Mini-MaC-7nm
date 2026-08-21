@@ -33,16 +33,22 @@ module sram_wrapper #(
     // above and treat the module as a technology black-box.
     // -----------------------------------------------------------------
     reg [31:0] mem [0:DEPTH-1];
+    localparam integer MEM_ADDR_WIDTH = $clog2(DEPTH);
+
+    initial begin
+        if ((1 << ADDR_WIDTH) < DEPTH)
+            $fatal(1, "sram_wrapper: ADDR_WIDTH is too small for DEPTH");
+    end
 
     always @(posedge clk) begin
         if (!sram_cen) begin
             if (!sram_wen) begin
-                if (sram_wmask[0]) mem[sram_addr][ 7: 0] <= sram_din[ 7: 0];
-                if (sram_wmask[1]) mem[sram_addr][15: 8] <= sram_din[15: 8];
-                if (sram_wmask[2]) mem[sram_addr][23:16] <= sram_din[23:16];
-                if (sram_wmask[3]) mem[sram_addr][31:24] <= sram_din[31:24];
+                if (sram_wmask[0]) mem[sram_addr[MEM_ADDR_WIDTH-1:0]][ 7: 0] <= sram_din[ 7: 0];
+                if (sram_wmask[1]) mem[sram_addr[MEM_ADDR_WIDTH-1:0]][15: 8] <= sram_din[15: 8];
+                if (sram_wmask[2]) mem[sram_addr[MEM_ADDR_WIDTH-1:0]][23:16] <= sram_din[23:16];
+                if (sram_wmask[3]) mem[sram_addr[MEM_ADDR_WIDTH-1:0]][31:24] <= sram_din[31:24];
             end
-            sram_dout <= mem[sram_addr];
+            sram_dout <= mem[sram_addr[MEM_ADDR_WIDTH-1:0]];
         end
     end
 `else

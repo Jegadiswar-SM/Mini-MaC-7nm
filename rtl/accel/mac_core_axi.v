@@ -93,6 +93,27 @@ module mac_core_axi #(
         end
     end
 
+    // Each accepted 32-bit stream beat supplies one DATA_W-bit operand from
+    // its low bits. Beats are stored in row-major buffer order: weights fill
+    // wgt_buf[row][column], while activation beat k fills act_buf[k].
+    integer wi, wj, wgt_index, act_index, res_index;
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            for (wi = 0; wi < ROWS; wi = wi + 1)
+                for (wj = 0; wj < COLS; wj = wj + 1)
+                    wgt_buf[wi][wj] <= '0;
+            for (wi = 0; wi < ROWS; wi = wi + 1)
+                act_buf[wi] <= '0;
+        end else begin
+            wgt_index = {{20{1'b0}}, wgt_waddr};
+            act_index = {{20{1'b0}}, act_waddr};
+            if (s_axis_wgt_tvalid && (wgt_waddr < ROWS*COLS))
+                wgt_buf[wgt_index / COLS][wgt_index % COLS] <= s_axis_wgt_tdata[DATA_W-1:0];
+            if (s_axis_act_tvalid && (act_waddr < ROWS))
+                act_buf[act_index] <= s_axis_act_tdata[DATA_W-1:0];
+        end
+    end
+
     // Simple arrays and systolic mapping
     reg [DATA_W-1:0] wgt_buf [0:ROWS-1][0:COLS-1];
     reg [DATA_W-1:0] act_buf [0:ROWS-1];
@@ -155,6 +176,8 @@ module mac_core_axi #(
         end else begin
             load_wgt_r <= 1'b0;
             res_wen    <= 1'b1; // active LOW wen, so 1'b1 = disable write
+            m_axis_res_tvalid <= 1'b0;
+            m_axis_res_tlast  <= 1'b0;
 
             case (state)
                 ST_IDLE: begin
@@ -188,9 +211,11 @@ module mac_core_axi #(
                 end
 
                 ST_WRITE_RES: begin
+                    res_index = {{24{1'b0}}, r_cnt};
                     res_wen <= 1'b0; // write to RES sram
-                    res_addr <= r_cnt;
-                    res_din <= col_out_wires[r_cnt];
+                    res_addr <= {{4{1'b0}}, r_cnt};
+                    res_din <= col_out_wires[res_index];
+                    res_buf[res_index] <= col_out_wires[res_index];
                     r_cnt <= r_cnt + 1;
                     if (r_cnt == reg_n_i - 1) begin
                         state <= ST_STREAM_OUT;
@@ -199,9 +224,9 @@ module mac_core_axi #(
                 end
 
                 ST_STREAM_OUT: begin
+                    res_index = {{24{1'b0}}, r_cnt};
                     m_axis_res_tvalid <= 1'b1;
-                    m_axis_res_tdata  <= res_dout;
-                    res_addr          <= r_cnt + 1;
+                    m_axis_res_tdata  <= res_buf[res_index];
                     if (m_axis_res_tready) begin
                         r_cnt <= r_cnt + 1;
                         if (r_cnt == reg_n_i - 1) begin
@@ -211,6 +236,11 @@ module mac_core_axi #(
                         end
                     end
                 end
+
+                default: begin
+                    state <= ST_IDLE;
+                    core_done_o <= 1'b0;
+                end
             endcase
         end
     end
@@ -218,7 +248,7 @@ module mac_core_axi #(
     integer ri;
     always @(*) begin
         for (ri = 0; ri < ROWS; ri = ri + 1)
-            row_in_r[ri] = (state == ST_FEED) ? 8'h01 : 8'h00; // simple test feed
+            row_in_r[ri] = (state == ST_FEED) ? act_buf[ri] : 8'h00;
     end
 
 endmodule

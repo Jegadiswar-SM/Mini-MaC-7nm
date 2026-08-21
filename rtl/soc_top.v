@@ -134,21 +134,24 @@ module soc_top (
     wire        axis_res_tvalid;
     wire        axis_res_tready;
     wire        axis_res_tlast;
+    wire        mac_dma_busy, mac_dma_wgt_done, mac_dma_act_done, mac_dma_res_done;
+    wire [31:0] mac_wgt_base, mac_act_base, mac_res_base;
+    wire [31:0] mac_dma_len_wgt, mac_dma_len_act;
 
     axi_stream_dma u_mac_dma (
         .clk(clk),
         .rst_n(rst_n_int),
         .start_i(mac_global_start),
         .abort_i(1'b0),
-        .wgt_base_i(32'h1000_0000),
-        .act_base_i(32'h1000_1000),
-        .res_base_i(32'h1000_2000),
-        .dma_len_wgt_i(32'd1024),
-        .dma_len_act_i(32'd1024),
-        .busy_o(),
-        .wgt_done_o(),
-        .act_done_o(),
-        .res_done_o(),
+        .wgt_base_i(mac_wgt_base),
+        .act_base_i(mac_act_base),
+        .res_base_i(mac_res_base),
+        .dma_len_wgt_i(mac_dma_len_wgt),
+        .dma_len_act_i(mac_dma_len_act),
+        .busy_o(mac_dma_busy),
+        .wgt_done_o(mac_dma_wgt_done),
+        .act_done_o(mac_dma_act_done),
+        .res_done_o(mac_dma_res_done),
         .m_req_o(stream_dma_req),
         .m_gnt_i(stream_dma_gnt),
         .m_addr_o(stream_dma_addr),
@@ -254,7 +257,15 @@ module soc_top (
         .m_axis_res_tdata_3(), .m_axis_res_tvalid_3(), .m_axis_res_tready_3(1'b1), .m_axis_res_tlast_3(),
 
         .done_o(mac_done),
-        .core_active_o(mac_core_active)
+        .core_active_o(mac_core_active),
+        .dma_busy_i(mac_dma_busy),
+        .dma_done_i(mac_dma_res_done),
+        .dma_inputs_done_i(mac_dma_wgt_done & mac_dma_act_done),
+        .dma_wgt_done_i(mac_dma_wgt_done), .dma_act_done_i(mac_dma_act_done),
+        .dma_res_done_i(mac_dma_res_done),
+        .wgt_base_o(mac_wgt_base), .act_base_o(mac_act_base),
+        .res_base_o(mac_res_base), .dma_len_wgt_o(mac_dma_len_wgt),
+        .dma_len_act_o(mac_dma_len_act), .core_en_o()
     );
 
     wire dma_stall = dma_m_req && !dma_m_gnt;

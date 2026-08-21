@@ -17,8 +17,8 @@
 # 0. Paths — EDIT to match your ASAP7 installation
 # -----------------------------------------------------------------------
 set PDK_ROOT  "/path/to/asap7"
-set LIB_DIR   "$PDK_ROOT/asap7sc7p5t_27/LIB/CCS"
-set LEF_DIR   "$PDK_ROOT/asap7sc7p5t_27/LEF"
+set LIB_DIR   "$PDK_ROOT/asap7sc7p5t_28/LIB/CCS"
+set LEF_DIR   "$PDK_ROOT/asap7sc7p5t_27/LEF" ;# physical name documented by tech/README.md
 set RTL_DIR   "../rtl"
 
 # ASAP7 Liberty files — CCS timing models, typical corner

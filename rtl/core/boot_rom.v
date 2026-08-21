@@ -17,7 +17,7 @@ module boot_rom (
     // During simulation, run.sh supplies +firmware=<project-relative path>.
     // The parameter keeps standalone simulations deterministic as well.
     parameter FIRMWARE_FILE = "dv/xcelium/firmware.hex";
-    reg [8*1024-1:0] firmware_file;
+    string firmware_file;
     integer firmware_fd;
     initial begin
         firmware_file = FIRMWARE_FILE;

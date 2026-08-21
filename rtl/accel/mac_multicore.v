@@ -68,7 +68,19 @@ module mac_multicore #(
     output wire        m_axis_res_tlast_3,
 
     output wire        done_o,
-    output wire [3:0]  core_active_o
+    output wire [3:0]  core_active_o,
+    input  wire        dma_busy_i,
+    input  wire        dma_done_i,
+    input  wire        dma_inputs_done_i,
+    input  wire        dma_wgt_done_i,
+    input  wire        dma_act_done_i,
+    input  wire        dma_res_done_i,
+    output wire [31:0] wgt_base_o,
+    output wire [31:0] act_base_o,
+    output wire [31:0] res_base_o,
+    output wire [31:0] dma_len_wgt_o,
+    output wire [31:0] dma_len_act_o,
+    output wire [3:0]  core_en_o
 );
 
     wire        global_start;
@@ -78,6 +90,8 @@ module mac_multicore #(
     wire [31:0] base_wgt_addr;
     wire [31:0] base_act_addr;
     wire [31:0] base_res_addr;
+    wire [31:0] dma_len_wgt_cfg;
+    wire [31:0] dma_len_act_cfg;
     wire [7:0]  dim_m, dim_k, dim_n;
 
     mac_cfg_regs u_regs (
@@ -92,31 +106,51 @@ module mac_multicore #(
         .wgt_base_o(base_wgt_addr),
         .act_base_o(base_act_addr),
         .res_base_o(base_res_addr),
-        .dma_len_wgt_o(),
-        .dma_len_act_o(),
-        .busy_i(|core_active_o),
-        .done_i(done_o),
-        .wgt_done_i(1'b0),
-        .act_done_i(1'b0),
-        .res_done_i(1'b0)
+        .dma_len_wgt_o(dma_len_wgt_cfg),
+        .dma_len_act_o(dma_len_act_cfg),
+        .busy_i(|core_active_o | dma_busy_i),
+        .done_i(done_o & dma_done_i),
+        .wgt_done_i(dma_wgt_done_i),
+        .act_done_i(dma_act_done_i),
+        .res_done_i(dma_res_done_i)
     );
 
+    assign wgt_base_o = base_wgt_addr;
+    assign act_base_o = base_act_addr;
+    assign res_base_o = base_res_addr;
+    assign dma_len_wgt_o = dma_len_wgt_cfg;
+    assign dma_len_act_o = dma_len_act_cfg;
+    assign core_en_o = core_en;
+
     reg [3:0] core_done_r;
+    reg       core_launched_r;
+    reg       operation_active_r;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n)
-            core_done_r <= 4'b0000;
+            begin
+                core_done_r <= 4'b0000;
+                core_launched_r <= 1'b0;
+                operation_active_r <= 1'b0;
+            end
         else begin
             core_done_r <= core_done;
-            if (global_start)
+            if (global_start) begin
                 core_done_r <= 4'b0000;
+                core_launched_r <= 1'b0;
+                operation_active_r <= 1'b1;
+            end else if (dma_inputs_done_i && !core_launched_r)
+                core_launched_r <= 1'b1;
+            if (operation_active_r && &(~core_en | core_done_r) && dma_done_i)
+                operation_active_r <= 1'b0;
         end
     end
 
-    assign done_o = &core_done_r;
-    assign core_active_o = ~core_done_r;
+    assign done_o = operation_active_r && &(~core_en | core_done_r);
+    assign core_active_o = operation_active_r ? (core_en & ~core_done_r) : 4'b0;
 
-    wire core_start_0 = global_start && core_en[0] && ~core_done_r[0];
+    wire core_launch = dma_inputs_done_i && !core_launched_r && !global_start;
+    wire core_start_0 = core_launch && core_en[0] && ~core_done_r[0];
 
     // Stagger core starts by 1 cycle each to prevent bus contention phase-lock
     reg core_start_1_d, core_start_2_d, core_start_3_d;
@@ -129,10 +163,10 @@ module mac_multicore #(
             core_start_2_d2 <= 1'b0;
             core_start_3_d  <= 1'b0;
         end else begin
-            core_start_1_d  <= global_start && core_en[1] && ~core_done_r[1];
-            core_start_2_d  <= global_start && core_en[2] && ~core_done_r[2];
+            core_start_1_d  <= core_launch && core_en[1] && ~core_done_r[1];
+            core_start_2_d  <= core_launch && core_en[2] && ~core_done_r[2];
             core_start_2_d2 <= core_start_2_d;
-            core_start_3_d  <= global_start && core_en[3] && ~core_done_r[3];
+            core_start_3_d  <= core_launch && core_en[3] && ~core_done_r[3];
         end
     end
 

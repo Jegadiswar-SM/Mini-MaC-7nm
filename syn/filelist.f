@@ -1,0 +1,16 @@
+rtl/macros/sram_wrapper.v
+rtl/bus/apb_bus.v
+rtl/bus/obi_to_apb.v
+rtl/accel/pe.v
+rtl/accel/systolic_array.v
+rtl/accel/mac_cfg_regs.v
+rtl/accel/axi_stream_dma.v
+rtl/accel/mac_core_axi.v
+rtl/accel/mac_multicore.v
+rtl/core/boot_rom.v
+rtl/core/dma_regs.v
+rtl/core/dma_master.v
+rtl/core/dma_arbiter.v
+rtl/core/mem_subsystem.v
+rtl/core/telemetry.v
+rtl/soc_top.v

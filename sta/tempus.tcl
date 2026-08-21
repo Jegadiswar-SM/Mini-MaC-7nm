@@ -12,7 +12,7 @@
 # 0. Paths — EDIT to match your ASAP7 installation
 # -----------------------------------------------------------------------
 set PDK_ROOT "/path/to/asap7"
-set LIB_DIR  "$PDK_ROOT/asap7sc7p5t_27/LIB/CCS"
+set LIB_DIR  "$PDK_ROOT/asap7sc7p5t_28/LIB/CCS"
 
 set LIB_TT  "$LIB_DIR/asap7sc7p5t_28_L_tt_100C_1p8V_conditional_ccs.lib"
 set LIB_FF  "$LIB_DIR/asap7sc7p5t_28_L_ff_100C_1p98V_conditional_ccs.lib"
